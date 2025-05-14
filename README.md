@@ -1,39 +1,118 @@
-# Neural Data Processing
+# Neural Data Processing for Cortical Layer Identification
 
-This project is a modular Python implementation of neural data processing code, designed for analyzing neural data stored in MATLAB format.
+This project is a modular Python implementation of neural data processing for identifying cortical layers from neural recordings. It analyzes neural data stored in MATLAB format, extracts features, trains autoencoder models, and visualizes the results.
 
-## Project Structure
+## Overview
 
-- `main.py`: Main script for running neural data processing and model training/evaluation
-- `data_loader.py`: Module for loading and converting MATLAB data structures
-- `tensor_utils.py`: Utility functions for creating and manipulating neural data tensors
+The LayerID project provides a framework for processing neural data and identifying cortical layers using deep learning methods. The system takes neural recordings as input and processes them through three different feature types:
+
+1. **Phase Magnitude** - Magnitude of phase synchrony between channels
+2. **Phase Angle** - Angular differences in phase synchrony
+3. **Comodulation** - Cross-frequency coupling between different frequency bands
+
+For each of these feature types, the framework trains a specialized autoencoder model with a classification head that can identify the cortical layer of each recording channel.
+
+## Codebase Structure
+
+The codebase is organized into several modules, each with a specific purpose:
+
+### Core Modules
+
+- `main.py`: Entry point and orchestration of the entire pipeline
+- `data_loader.py`: Functions for loading and parsing MATLAB data files
+- `tensor_utils.py`: Utilities for creating and manipulating neural data tensors
 - `utils.py`: Common utility functions used across modules
-- `config.json`: Configuration file for model parameters and data paths
-- `visualizations.py`: Module for generating training and evaluation visualizations
-- `hyperparameter_optimization.py`: Script for optimizing model hyperparameters
-- `saved_models/`: Directory containing trained models and training histories
-- `datasets/`: Directory containing dataset classes for different types of neural data
-  - `base.py`: Base dataset class with common utilities
+
+### Model Framework
+
+- `models/`: Neural network model definitions
+  - `layer_classifier.py`: Defines the autoencoder models with classification heads
+  
+### Dataset Handlers
+
+- `datasets/`: Dataset classes for different neural feature types
+  - `base.py`: Base dataset class with common functionality
   - `phase_magnitude.py`: Dataset for phase magnitude features
   - `phase_angle.py`: Dataset for phase angle features
   - `comodulation.py`: Dataset for comodulation features
-- `models/`: Directory containing neural network models for layer classification
-  - `layer_classifier.py`: Neural network models for layer classification
 
-## Requirements
+### Visualization Tools
 
-- Python 3.6+
-- PyTorch
-- NumPy
-- SciPy
-- scikit-learn
-- matplotlib
-- seaborn
-- umap-learn
-- optuna (for hyperparameter optimization)
-- plotly (optional, for optimization visualizations)
+- `visualizations.py`: Functions for generating training and evaluation visualizations
+- `visualize_coherence_matrices.py`: Tools for visualizing coherence matrices
+- `visualize_data_and_reconstructions.py`: Tools for visualizing raw data and model reconstructions
+- `visualize_patient_reconstructions.py`: Tools for visualizing patient-specific reconstructions
 
-## Usage
+### Model Evaluation
+
+- `silhouette_tracking.py`: Functions for computing silhouette scores and tracking clustering quality
+- `generate_confusion_matrices.py`: Generate confusion matrices for model evaluation
+
+### Hyperparameter Optimization
+
+- `hyperparameter_optimization.py`: Optimize model hyperparameters using Optuna
+- `optimize_all.py`: Script to optimize all model types
+- `train.py`: Simplified training script for optimization
+
+### Distributed Computing
+
+- `run_on_runpod.sh`: Script for running the code on RunPod compute platform
+- `runpod_hyperopt.py`: RunPod-specific hyperparameter optimization
+- `runpod_train_silhouette.py`: RunPod-specific silhouette training
+
+## Data Flow
+
+The data flow through the system follows these steps:
+
+1. **Data Loading**: MATLAB data is loaded using `data_loader.py`
+2. **Tensor Construction**: Raw data is organized into tensors using `tensor_utils.py`
+3. **Dataset Creation**: Tensors are processed into channel-level datasets
+4. **Model Training**: Autoencoder models are trained on these datasets
+5. **Evaluation**: Models are evaluated using classification metrics and clustering quality
+6. **Visualization**: Results are visualized for interpretation
+
+## Model Architecture
+
+The core architecture uses supervised autoencoders with a classification head:
+
+```
+Input Data -> Convolutional Encoder -> Latent Space -> Convolutional Decoder -> Reconstructed Data
+                                     |
+                                     v
+                                Classification Head
+                                     v
+                                Layer Prediction
+```
+
+- **Encoder**: Convolutional neural network that compresses input data into a latent representation
+- **Decoder**: Deconvolutional network that reconstructs the input from the latent representation
+- **Classification Head**: Fully connected layer that predicts layer identity from latent features
+
+The model is trained with a combined loss function:
+
+```
+Total Loss = Reconstruction Loss + KL Regularization + Classification Loss
+```
+
+## Configuration System
+
+The project uses a flexible configuration system with JSON files:
+
+- `config.json`: Default configuration for all models
+- `config_{feature_type}_optimized.json`: Optimized configurations for each feature type
+
+Key configuration parameters include:
+- Learning rate
+- Batch size
+- Latent dimension
+- Number of epochs
+- Classification loss weight
+- Dropout rate
+- Weight decay
+
+## Usage Instructions
+
+### Basic Usage
 
 1. Place your `parsedData.mat` file in the root directory
 2. (Optional) Modify `config.json` to adjust model parameters
@@ -56,147 +135,128 @@ python main.py --config custom_config.json
 # Use optimized configs for each model type (if available)
 python main.py --use-optimized
 
-# Force raw data visualization (regardless of config setting)
+# Force raw data visualization
 python main.py --visualize-raw
 
-# Skip raw data visualization (regardless of config setting)
+# Skip raw data visualization
 python main.py --no-visualize-raw
 
-# Show batch progress bars for all epochs, not just the first
+# Show batch progress for all epochs
 python main.py --show-batch-progress
 
-# Skip latent feature visualizations (useful if visualization is causing errors)
+# Skip latent feature visualizations
 python main.py --skip-latent-vis
+
+# Set frequency for calculating silhouette scores
+python main.py --silhouette-freq 50
 ```
 
-## Hyperparameter Optimization
+### Hyperparameter Optimization
 
-To optimize hyperparameters for better model performance, use the `hyperparameter_optimization.py` script:
+To optimize model hyperparameters:
 
 ```bash
-# Optimize hyperparameters for a specific model type
+# Optimize for a specific model type
 python hyperparameter_optimization.py --model phase_magnitude --trials 50
 
-# Optimize hyperparameters for all model types
+# Optimize for all model types
 python hyperparameter_optimization.py --model all --trials 30
 
-# Apply the best hyperparameters to a new config file
+# Apply best parameters to config files
 python hyperparameter_optimization.py --model phase_magnitude --trials 50 --apply
 ```
 
-This will create optimized configuration files (`config_{model_type}_optimized.json`) that you can use for training:
+To optimize all models and generate optimized config files:
 
 ```bash
-python main.py --config config_phase_magnitude_optimized.json
-```
-
-### Using Optimized Configs for All Models
-
-To optimize hyperparameters for all model types at once and generate optimized config files, you can use the provided `optimize_all.py` script:
-
-```bash
-# Run optimization for all model types (30 trials each)
 python optimize_all.py --trials 30
-
-# Run with custom number of trials
-python optimize_all.py --trials 50
 ```
 
-This script will generate optimized config files for each model type (`config_phase_magnitude_optimized.json`, `config_phase_angle_optimized.json`, and `config_comodulation_optimized.json`).
-
-To train using these optimized configs:
+Then train using the optimized configs:
 
 ```bash
 python main.py --use-optimized
 ```
 
-This will automatically use the optimized config files for each model type if available, falling back to the default config for any model types that don't have optimized configs.
+## Neural Data Format
 
-The hyperparameter optimization includes:
-- Learning rate
-- Batch size
-- Latent space dimension
-- Classification loss weight (lambda_cls)
-- Dropout rate
-- Weight decay
+The code expects a MATLAB file named `parsedData.mat` that contains:
 
-Optimization results and visualizations are saved in the `hyperparameter_results/` directory.
+- **Phase Magnitude Data**:
+  - `LFPphasemagnitude`: Phase magnitude for Local Field Potentials 
+  - `LFGphasemagnitude`: Phase magnitude for Local Field Gradients
+  - `CSDphasemagnitude`: Phase magnitude for Current Source Density
 
-## Data Format
+- **Phase Angle Data**:
+  - `LFPphaseangle`: Phase angles for Local Field Potentials 
+  - `LFGphaseangle`: Phase angles for Local Field Gradients
+  - `CSDphaseangle`: Phase angles for Current Source Density
 
-The code expects a MATLAB file named `parsedData.mat` that contains neural data in a specific format. The data should include:
+- **Comodulation Data**:
+  - `lfpLFPcoModCorrs`: Comodulation correlations between LFP frequencies
+  - `lfpLFGcoModCorrs`: Comodulation correlations between LFP and LFG
+  - `lfpCSDcoModCorrs`: Comodulation correlations between LFP and CSD
 
-- Phase magnitude data (LFPphasemagnitude, LFGphasemagnitude, CSDphasemagnitude)
-- Phase angle data (LFPphaseangle, LFGphaseangle, CSDphaseangle)
-- Comodulation data (lfpLFPcoModCorrs, lfpLFGcoModCorrs, lfpCSDcoModCorrs)
-- Channel y-coordinates (ycoords)
-- Layer borders (dredge)
+- **Recording Metadata**:
+  - `ycoords`: Y-coordinates for each recording channel
+  - `DREDgeLayerBorders`: Borders between cortical layers
 
-## Configuration
+## Output and Results
 
-The project uses a `config.json` file for configuration. The following parameters can be adjusted:
+After training, the system produces:
 
-- `data_path`: Path to the MATLAB data file (default: 'parsedData.mat')
-- `batch_size`: Batch size for training (default: 32)
-- `num_epochs`: Number of training epochs (default: 50)
-- `learning_rate`: Learning rate for model training (default: 0.001)
-- `num_classes`: Number of output classes (default: 8)
-- `pad_value`: Value used for padding tensors (default: 99.0)
-- `models_dir`: Directory for saving trained models (default: 'saved_models')
-- `visualize_raw_data`: Whether to generate visualizations of raw data (default: false)
+### Model Files
+- `{prefix}_{model_type}_model.pt`: Trained PyTorch model
+- `{prefix}_{model_type}_history.json`: Training metrics history
+- `{prefix}_{model_type}_results.json`: Evaluation results
 
-## Saved Models
+### Visualizations
+- Training and validation loss/accuracy curves
+- Confusion matrices for layer classification
+- Model comparison charts
+- Latent space visualizations using PCA, t-SNE, and UMAP
+- Silhouette score and Calinski-Harabasz index plots for clustering quality
 
-After training, the following files are saved in the `saved_models` directory:
+### Evaluation Metrics
+- Classification accuracy
+- Confusion matrix
+- Silhouette scores (for clustering quality)
+- Calinski-Harabasz index (for clustering quality)
 
-- `{prefix}_{model_type}_model.pt`: PyTorch model state dictionary
-- `{prefix}_{model_type}_history.json`: Training history (loss and accuracy)
-- `{prefix}_{model_type}_results.json`: Evaluation results (confusion matrix, classification report)
+## Cluster Quality Metrics
 
-Where `{prefix}` is the user-provided prefix and `{model_type}` is one of:
-- `phase_magnitude`
-- `phase_angle`
-- `comodulation`
+The system tracks two important metrics to evaluate how well the model separates different cortical layers:
 
-## Visualizations
+1. **Silhouette Score**: Measures how similar objects are to their own cluster compared to other clusters
+2. **Calinski-Harabasz Index**: Ratio of between-cluster dispersion to within-cluster dispersion
 
-The project automatically generates visualizations for each training run in a subdirectory named `{prefix}_visualizations` within the `saved_models` directory. The following visualizations are created:
+These metrics are calculated for different dimensionality reduction techniques:
+- Direct on latent features
+- After PCA reduction
+- After t-SNE reduction
+- After UMAP reduction
 
-### Training Visualizations
-- `{prefix}_{model_type}_history.png`: Training and validation loss/accuracy over epochs
-- `{prefix}_{model_type}_confusion.png`: Confusion matrix heatmap
-- `{prefix}_model_comparison.png`: Bar chart comparing accuracy across different models
+## Training Optimizations
 
-### Latent Feature Visualizations
-For each model, the latent features are extracted and visualized using dimensionality reduction techniques. These are saved in separate directories for training and validation data to facilitate comparison:
+The training process includes several optimizations:
 
-#### Training Data (7 patients)
-Located in `{prefix}_visualizations/training/`:
-- `{model_type}_latent_pca.png`: PCA visualization of the model's latent features for training data
-- `{model_type}_latent_umap.png`: UMAP visualization of the model's latent features for training data
-- `{model_type}_latent_tsne.png`: t-SNE visualization of the model's latent features for training data
+- Batch-level progress tracking
+- Silhouette score calculation at configurable intervals
+- Model checkpointing every 50 epochs
+- Early stopping with patience
+- Learning rate scheduling
+- Balancing of reconstruction, KL divergence, and classification losses
 
-#### Validation Data (1 patient)
-Located in `{prefix}_visualizations/validation/`:
-- `{model_type}_latent_pca.png`: PCA visualization of the model's latent features for validation data
-- `{model_type}_latent_umap.png`: UMAP visualization of the model's latent features for validation data
-- `{model_type}_latent_tsne.png`: t-SNE visualization of the model's latent features for validation data
+## Contributing
 
-This separation allows for comparison between how the model represents data from the training set versus the validation set, which can help identify issues like overfitting.
+To contribute to this project:
 
-### Raw Data Visualizations
-The raw data is also visualized using the same dimensionality reduction techniques:
-- `phase_magnitude_pca.png`, `phase_magnitude_umap.png`, `phase_magnitude_tsne.png`: Visualizations of phase magnitude data
-- `phase_angle_pca.png`, `phase_angle_umap.png`, `phase_angle_tsne.png`: Visualizations of phase angle data
-- `comodulation_pca.png`, `comodulation_umap.png`, `comodulation_tsne.png`: Visualizations of comodulation data
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests to ensure functionality
+5. Submit a pull request
 
-These visualizations help in understanding the data distribution, model performance, and comparing different training runs. They also allow for the analysis of how well the model separates different cortical layers in both the raw data and latent feature spaces.
+## License
 
-### Training Optimization
-
-The training process includes the following optimizations:
-
-- Validation is performed only every 10 epochs and on the final epoch to speed up training
-- Progress bars show key metrics (training loss, training accuracy, validation loss, validation accuracy)
-- Batch-level progress bars show training progress (can be enabled for all epochs with `--show-batch-progress`)
-- A checkmark (✓) indicator shows when validation was actually performed
+This project is licensed under the MIT License - see the LICENSE file for details.
