@@ -1,0 +1,18 @@
+{
+    "data_path": "parsedData.mat",
+    "batch_size": 64,
+    "num_epochs": 1000,
+    "learning_rate": 0.0029813610262336763,
+    "num_classes": 8,
+    "pad_value": 99.0,
+    "models_dir": "saved_models",
+    "lambda_cls": 6.522992650816235,
+    "latent_dim": 128,
+    "optimizer_params": {
+        "weight_decay": 1.8825464838586005e-05
+    },
+    "model_params": {
+        "dropout_rate": 0.08338354699526221
+    },
+    "patience": 50
+}

@@ -1,0 +1,28 @@
+{
+    "data_path": "/root/LayerID/neural_data_processor/parsedData.mat",
+    "saved_models_path": "/saved_models/",
+    "visualizations_path": "/visualizations/",
+    "models_dir": "/saved_models/",
+    "num_classes": 8,
+    "pad_value": -1,
+    "batch_size": 32,
+    "num_epochs": 25,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "latent_dim": 64,
+    "device": "cuda",
+    "gpu_settings": {
+        "use_gpu": true,
+        "gpu_id": 0,
+        "num_workers": 4,
+        "pin_memory": true
+    },
+    "lambda_cls": 1.0,
+    "visualize_raw_data": false,
+    "cluster_settings": {
+        "gpu_type": "V100",
+        "gpu_memory": 32,
+        "max_gpus_per_job": 8,
+        "container": "erisxdl.partners.org/zivlab_eris1/torch:latest"
+    }
+} 
